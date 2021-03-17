@@ -9,8 +9,11 @@
 
 #### 1. Set the Environment Variables:
 `OU_NAME`: will be the Organization Name. Set whatever you want to use in this event.
+
 `BUDGET_LIMIT`: will be the limit for child accounts. Such as, if you type 100, it will create $80 budget limit in child account, and alert notifiers list when it exceeds %80 percent of Budget limit
+
 `DEFAULT_CHILD_ACCOUNT_PASS`: Set the default passwords for IAM users which will be created in Child accounts.
+
 `BUDGET_NOTIFIERS_LIST`: It will be list of email addresses with comma seperated.(i.e. "test@gmail.com,test2@gmail.com"). Once the Budget limit exceeds %80 percent, it will notify the mail addresses entered in this list.
 
 
