@@ -1,0 +1,4 @@
+virtualenv/
+credentials.csv
+commands.txt
+emails.csv
