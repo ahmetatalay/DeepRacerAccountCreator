@@ -16,6 +16,8 @@
 
 `BUDGET_NOTIFIERS_LIST`: It will be list of email addresses with comma seperated.(i.e. "test@gmail.com,test2@gmail.com"). Once the Budget limit exceeds %80 percent, it will notify the mail addresses entered in this list.
 
+`CHILD_ACCOUNT_BILLING_ACCESS`: It gives an access to IAM users in Child accounts to give an access for Billing console. It must be "TRUE" or "FALSE".
+
 
 ```
 export AWS_ACCESS_KEY_ID=<AWS_ACCESS_KEY_ID>
@@ -26,6 +28,8 @@ export OU_NAME="DeepRacerLeague"
 export DEFAULT_CHILD_ACCOUNT_PASS=<DEFAULT PASSWORD>
 export BUDGET_LIMIT=100
 export BUDGET_NOTIFIERS_LIST="test@gmail.com,test2@gmail.com"
+export CHILD_ACCOUNT_BILLING_ACCESS="TRUE"
+
 ```
 
 #### 2. Install the Python requirements
