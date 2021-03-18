@@ -36,6 +36,16 @@ def check_env_variables():
         print("<BUDGET_NOTIFIERS_LIST> is NOT set as an environment variable. It can be as a list as comma seperated.(i.e. BUDGET_NOTIFIERS_LIST='test@gmail.com, test2@gmail.com' ).Exit!")
         exit(1)
 
+    if os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') is not None:
+        if os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') == 'TRUE' or os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') == 'FALSE':
+            print("<CHILD_ACCOUNT_BILLING_ACCESS>: {} is set as an environment variable.".format(os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS')))
+        else:
+            print("<CHILD_ACCOUNT_BILLING_ACCESS> is MUST set as a 'TRUE' or 'FALSE'. Exit!")
+            exit(1)
+    else:
+        print("<CHILD_ACCOUNT_BILLING_ACCESS> is NOT set as an environment variable. It can be 'TRUE' or 'FALSE'. Exit!")
+        exit(1)
+
 def get_account_id(client, email):
     paginator = client.get_paginator(
         'list_accounts').paginate().build_full_result()
@@ -143,6 +153,9 @@ def attach_iam_user_policies(iam_client,account_name,custom_policy_arn):
     iam_client.attach_user_policy(UserName=account_name,PolicyArn="arn:aws:iam::aws:policy/AWSDeepRacerFullAccess")
     iam_client.attach_user_policy(UserName=account_name,PolicyArn="arn:aws:iam::aws:policy/AWSDeepRacerRoboMakerAccessPolicy")
     iam_client.attach_user_policy(UserName=account_name,PolicyArn="arn:aws:iam::aws:policy/service-role/AWSDeepRacerServiceRolePolicy")
+    
+    if os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') == 'TRUE':
+        iam_client.attach_user_policy(UserName=account_name,PolicyArn="arn:aws:iam::aws:policy/AWSBillingReadOnlyAccess")
 
 def update_policies(account_id,iam_user_name,iam_client):
     try:
@@ -150,16 +163,20 @@ def update_policies(account_id,iam_user_name,iam_client):
             PolicyArn="arn:aws:iam::{}:policy/DeepRacerWorkshopAttendeePolicy".format(account_id)
         )
         print("Detached DeepRacerWorkshopAttendeePolicy from IAM User: {} in account id:{}".format(iam_user_name,account_id))
-
-        iam_client.delete_policy(PolicyArn="arn:aws:iam::{}:policy/DeepRacerWorkshopAttendeePolicy".format(account_id))
-        print("Deleted DeepRacerWorkshopAttendeePolicy in account id:{}".format(account_id))
     except iam_client.exceptions.NoSuchEntityException as error:
         print("Policy already detached --> Message: {}".format(error))
 
+    try:
+        iam_client.delete_policy(PolicyArn="arn:aws:iam::{}:policy/DeepRacerWorkshopAttendeePolicy".format(account_id))
+        print("Deleted DeepRacerWorkshopAttendeePolicy in account id:{}".format(account_id))
+    except iam_client.exceptions.NoSuchEntityException as error:
+        print("Policy already deleted --> Message: {}".format(error))
+
     custom_policy_arn=create_custom_iam_userpolicy(iam_client)
     print("Created DeepRacerWorkshopAttendeePolicy in account id:{}".format(account_id))
-    iam_client.attach_user_policy(UserName=iam_user_name,PolicyArn=custom_policy_arn)
-    print("Attached DeepRacerWorkshopAttendeePolicy to IAM User:{} in account id:{}".format(iam_user_name, account_id))
+    
+    attach_iam_user_policies(iam_client,iam_user_name,custom_policy_arn)
+    print("Attached DeepRacerWorkshopAttendeePolicy, Billing Access to IAM User:{} in account id:{}".format(iam_user_name, account_id))
 
 def set_permissions(sts_client,account_name,account_id,default_password,type=None):
     assume_creds = assume_child_credentials(sts_client,account_id)
@@ -169,6 +186,7 @@ def set_permissions(sts_client,account_name,account_id,default_password,type=Non
                         aws_secret_access_key=assume_creds['SecretAccessKey'],
                         aws_session_token = assume_creds['SessionToken'])
     iam_user_name="{}-deepracer-{}".format(account_name,account_id)
+    # iam_user_name="deepraceruser-{}".format(account_id)
 
     if type == "update" and not exists_iam_user(iam_client,iam_user_name):
         print("IAM user:{} not found, NO need to update. You should first bootstrap it. Exit!".format(iam_user_name))
@@ -198,6 +216,11 @@ def set_permissions(sts_client,account_name,account_id,default_password,type=Non
 
         iam_client.attach_user_policy(UserName=iam_user_name,PolicyArn="arn:aws:iam::aws:policy/service-role/AWSDeepRacerServiceRolePolicy")
         print("Attached AWSDeepRacerServiceRolePolicy from IAM User: {} in account id:{}".format(iam_user_name,account_id))
+        
+        if os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') == 'TRUE':
+            iam_client.attach_user_policy(UserName=iam_user_name,PolicyArn="arn:aws:iam::aws:policy/AWSBillingReadOnlyAccess")
+            print("Attached AWSBillingReadOnlyAccess from IAM User: {} in account id:{}".format(iam_user_name,account_id))
+
         return
 
     if type == "detach" and not exists_iam_user(iam_client,iam_user_name):
@@ -220,6 +243,11 @@ def set_permissions(sts_client,account_name,account_id,default_password,type=Non
 
             iam_client.detach_user_policy(UserName=iam_user_name,PolicyArn="arn:aws:iam::aws:policy/service-role/AWSDeepRacerServiceRolePolicy")
             print("Detached AWSDeepRacerServiceRolePolicy from IAM User: {} in account id:{}".format(iam_user_name,account_id))
+
+            if os.environ.get('CHILD_ACCOUNT_BILLING_ACCESS') == 'TRUE':
+                iam_client.detach_user_policy(UserName=iam_user_name,PolicyArn="arn:aws:iam::aws:policy/AWSBillingReadOnlyAccess")
+                print("Detached AWSBillingReadOnlyAccess from IAM User: {} in account id:{}".format(iam_user_name,account_id))
+
         except iam_client.exceptions.NoSuchEntityException as error:
             print("Policy already detached --> Message: {}".format(error))
 
@@ -441,7 +469,6 @@ def bootstrap(account_id,account_name,email,source_root_id,dest_ou_id,organizati
             count = count +1
             if describe_account_response['CreateAccountStatus']['State'] == "FAILED" or count > 20: # 20x3= 60 sec timeout
                 raise Exception("Problem occurred while creating account id")
-                exit()
 
         child_account_id = get_account_id(organization_client,email)  
         set_permissions(sts_client,account_name,child_account_id,default_password)
